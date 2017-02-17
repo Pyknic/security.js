@@ -1,0 +1,14 @@
+{
+    "name": "security.js",
+    "version": "1.0.0",
+    "description" : "A client-side login session for javascript.",
+    "keywords": ["util", "session", "login", "security"],
+    "repository" : {
+        "type" : "git",
+        "url"  : "git@github.com:Pyknic/security.js.git"
+    },
+    "license" : "Apache-2.0",
+    "author": "Emil Forslund",
+    "contributors": [],
+    "dependencies": {}
+}

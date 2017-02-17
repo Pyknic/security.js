@@ -1,0 +1,10 @@
+{
+    "name": "security.js",
+    "version": "1.0.0",
+    "main": "src/security.js",
+    "ignore": [
+        ".jshintrc", "**/*.txt"
+    ],
+    "dependencies": {},
+    "devDependencies": {}
+}
