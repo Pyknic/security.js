@@ -29,6 +29,13 @@
         //                           Internal methods                         //
         ////////////////////////////////////////////////////////////////////////
         
+        /**
+         * Takes a parameter and if it is a valid string, returns it. Otherwise,
+         * an exception is thrown.
+         * 
+         * @param {type} s    the value to check
+         * @returns {number}  the value inputted
+         */
         var expectString = function(s) {
             if (typeof(s) === 'string') {
                 return s;
@@ -37,6 +44,13 @@
             }
         };
 
+        /**
+         * Takes a parameter and if it is a valid number, returns it. Otherwise,
+         * an exception is thrown.
+         * 
+         * @param {type} n    the value to check
+         * @returns {number}  the value inputted
+         */
         var expectNumber = function(n) {
             if (typeof(n) === 'number') {
                 return n;
@@ -45,6 +59,15 @@
             }
         };
 
+        /**
+         * If the first parameter is a valid function, return it. If it is
+         * undefined, return the second parameter. If the first parameter is of
+         * an unknown type (not a function or undefined), throw an exception.
+         * 
+         * @param {type} f          the value to check
+         * @param {type} otherwise  value to return if f is undefined
+         * @returns {function}      either 'f' (if a function) or 'otherwise'
+         */
         var functionOr = function(f, otherwise) {
             if (typeof(f) === 'function') {
                 return f;
@@ -59,6 +82,9 @@
         //                              Constructor                           //
         ////////////////////////////////////////////////////////////////////////
         
+        /**
+         * The 'Security' namespace. These methods are part of the public API.
+         */
         window.Security = {
             
             ////////////////////////////////////////////////////////////////////
@@ -71,19 +97,43 @@
             //                        Manage Credentials                      //
             ////////////////////////////////////////////////////////////////////
 
+            /**
+             * Returns the username of the currently logged in user, or throws
+             * an exception if the user is not logged in.
+             * 
+             * @returns {string}  the username
+             */
             getUsername : function() {
                 return this.user;
             },
 
+            /**
+             * Returns the encrypted password of the currently logged in user, 
+             * or throws an exception if the user is not logged in.
+             * 
+             * @returns {string}  the password
+             */
             getPassword : function() {
                 return this.pass;
             },
             
+            /**
+             * Returns a boolean to indicate if the user is logged in or not.
+             * 
+             * @returns {boolean}  true if logged in, else false
+             */
             isLoggedIn : function() {
                 return this.user !== null
                     && this.pass !== null;
             },
             
+            /**
+             * Starts the login service, loading any stored credentials from
+             * either the local session or the local storage if available. If
+             * not, start the login service logged out.
+             * 
+             * @returns {Security}  this instance
+             */
             start : function() {
                 if (typeof(localStorage.user) === 'string'
                 &&  typeof(localStorage.pass) === 'string') {
@@ -98,6 +148,16 @@
                 }
             },
 
+            /**
+             * Login using the specified credentials, storing them in either the
+             * local session or local storage depending on the 'remember'
+             * parameter. To logout again, use the .logout()-method.
+             * 
+             * @param {string} user       the username
+             * @param {string} pass       the password (unencrypted)
+             * @param {boolean} remember  true to store credentials, else false
+             * @returns {Security}        this instance
+             */
             login : function(user, pass, remember) {
                 this.user = user;
                 this.pass = pass;
@@ -113,18 +173,34 @@
                 return this;
             },
 
+            /**
+             * Load credentials from the local storage, throwing an exception if
+             * they are not present.
+             * 
+             * @returns {Security}  this instance
+             */
             loadStored : function() {
-                this.user = localStorage.user;
-                this.pass = localStorage.pass;
+                this.user = expectString(localStorage.user);
+                this.pass = expectString(localStorage.pass);
                 return this;
             },
             
+            /**
+             * Load credentials from the local session, throwing an exception if
+             * they are not present.
+             * 
+             * @returns {Security}  this instance
+             */
             loadSession : function() {
-                this.user = sessionStorage.user;
-                this.pass = sessionStorage.pass;
+                this.user = expectString(sessionStorage.user);
+                this.pass = expectString(sessionStorage.pass);
                 return this;
             },
 
+            /**
+             * Logout any logged in user, clearing both the session and the
+             * local storage.
+             */
             logout : function() {
                 localStorage.user   = null;
                 localStorage.pass   = null;
@@ -137,26 +213,153 @@
             //              Basic Authentication in HTTP requests             //
             ////////////////////////////////////////////////////////////////////
 
+            /**
+             * Send a http 'POST' request to the specified url, using basic
+             * authentication authered by the currently logged in user.
+             * <p>
+             * The configuration can be left out or be either a callback 
+             * function or an object containing the following keys:
+             * <ul>
+             *     <li>config.data:      Object to be sent as JSON
+             *     <li>config.onSuccess: Callback if the command succeeds
+             *     <li>config.onFailure: Callback if the command fails
+             * </ul>
+             * 
+             * The callbacks should take two parameters, the first being any
+             * data sent back from the server and the second being the status
+             * code of the request. The data will be decoded from its original
+             * JSON format automatically.
+             * 
+             * @param {string} url      the url to send the request to
+             * @param {object|function} config  a configuration object
+             * @returns {Security}      this instance
+             */
             post : function(url, config) {
                 return this.send('POST', url, config);
             },
             
+            /**
+             * Send a http 'PUT' request to the specified url, using basic
+             * authentication authered by the currently logged in user.
+             * <p>
+             * The configuration can be left out or be either a callback 
+             * function or an object containing the following keys:
+             * <ul>
+             *     <li>config.data:      Object to be sent as JSON
+             *     <li>config.onSuccess: Callback if the command succeeds
+             *     <li>config.onFailure: Callback if the command fails
+             * </ul>
+             * 
+             * The callbacks should take two parameters, the first being any
+             * data sent back from the server and the second being the status
+             * code of the request. The data will be decoded from its original
+             * JSON format automatically.
+             * 
+             * @param {string} url      the url to send the request to
+             * @param {object|function} config  a configuration object
+             * @returns {Security}      this instance
+             */
             put : function(url, config) {
                 return this.send('PUT', url, config);
             },
             
+            /**
+             * Send a http 'GET' request to the specified url, using basic
+             * authentication authered by the currently logged in user.
+             * <p>
+             * The configuration can be left out or be either a callback 
+             * function or an object containing the following keys:
+             * <ul>
+             *     <li>config.data:      Object to be sent as JSON
+             *     <li>config.onSuccess: Callback if the command succeeds
+             *     <li>config.onFailure: Callback if the command fails
+             * </ul>
+             * 
+             * The callbacks should take two parameters, the first being any
+             * data sent back from the server and the second being the status
+             * code of the request. The data will be decoded from its original
+             * JSON format automatically.
+             * 
+             * @param {string} url      the url to send the request to
+             * @param {object|function} config  a configuration object
+             * @returns {Security}      this instance
+             */
             get : function(url, config) {
                 return this.send('GET', url, config);
             },
             
+            /**
+             * Send a http 'DELETE' request to the specified url, using basic
+             * authentication authered by the currently logged in user.
+             * <p>
+             * The configuration can be left out or be either a callback 
+             * function or an object containing the following keys:
+             * <ul>
+             *     <li>config.data:      Object to be sent as JSON
+             *     <li>config.onSuccess: Callback if the command succeeds
+             *     <li>config.onFailure: Callback if the command fails
+             * </ul>
+             * 
+             * The callbacks should take two parameters, the first being any
+             * data sent back from the server and the second being the status
+             * code of the request. The data will be decoded from its original
+             * JSON format automatically.
+             * 
+             * @param {string} url      the url to send the request to
+             * @param {object|function} config  a configuration object
+             * @returns {Security}      this instance
+             */
             delete : function(url, config) {
                 return this.send('DELETE', url, config);
             },
             
+            /**
+             * Send a http 'OPTIONS' request to the specified url, using basic
+             * authentication authered by the currently logged in user.
+             * <p>
+             * The configuration can be left out or be either a callback 
+             * function or an object containing the following keys:
+             * <ul>
+             *     <li>config.data:      Object to be sent as JSON
+             *     <li>config.onSuccess: Callback if the command succeeds
+             *     <li>config.onFailure: Callback if the command fails
+             * </ul>
+             * 
+             * The callbacks should take two parameters, the first being any
+             * data sent back from the server and the second being the status
+             * code of the request. The data will be decoded from its original
+             * JSON format automatically.
+             * 
+             * @param {string} url      the url to send the request to
+             * @param {object|function} config  a configuration object
+             * @returns {Security}      this instance
+             */
             options : function(url, config) {
                 return this.send('OPTIONS', url, config);
             },
             
+            /**
+             * Send a http request with a custom method to the specified url,
+             * using basic authentication authered by the currently logged in 
+             * user.
+             * <p>
+             * The configuration can be left out or be either a callback 
+             * function or an object containing the following keys:
+             * <ul>
+             *     <li>config.data:      Object to be sent as JSON
+             *     <li>config.onSuccess: Callback if the command succeeds
+             *     <li>config.onFailure: Callback if the command fails
+             * </ul>
+             * 
+             * The callbacks should take two parameters, the first being any
+             * data sent back from the server and the second being the status
+             * code of the request. The data will be decoded from its original
+             * JSON format automatically.
+             * 
+             * @param {string} url      the url to send the request to
+             * @param {object|function} config  a configuration object
+             * @returns {Security}      this instance
+             */
             send : function(method, url, config) {
                 expectString(method);
                 
