@@ -17,7 +17,7 @@
 /**
  * Declares the 'Security' module.
  * 
- * @param {object} window  the dom window
+ * @param {Window} window  the dom window
  * @returns {undefined}
  */
 (function(window) {
@@ -39,8 +39,8 @@
          * Takes a parameter and if it is a valid string, returns it. Otherwise,
          * an exception is thrown.
          * 
-         * @param {type} s    the value to check
-         * @returns {number}  the value inputted
+         * @param {string} s  the value to check
+         * @returns {string}  the value inputted
          */
         var expectString = function(s) {
             if (typeof(s) === 'string') {
@@ -54,7 +54,7 @@
          * Takes a parameter and if it is a valid number, returns it. Otherwise,
          * an exception is thrown.
          * 
-         * @param {type} n    the value to check
+         * @param {number} n  the value to check
          * @returns {number}  the value inputted
          */
         var expectNumber = function(n) {
@@ -69,7 +69,7 @@
          * Takes a parameter and if it is a valid function, returns it. 
          * Otherwise, an exception is thrown.
          * 
-         * @param {type} f      the value to check
+         * @param {function} f  the value to check
          * @returns {function}  the value inputted
          */
         var expectFunction = function(f) {
@@ -85,9 +85,9 @@
          * undefined, return the second parameter. If the first parameter is of
          * an unknown type (not a function or undefined), throw an exception.
          * 
-         * @param {type} f          the value to check
-         * @param {type} otherwise  value to return if f is undefined
-         * @returns {function}      either 'f' (if a function) or 'otherwise'
+         * @param {function} f          the value to check
+         * @param {function} otherwise  value to return if f is undefined
+         * @returns {function}          either 'f' (if function) or 'otherwise'
          */
         var functionOr = function(f, otherwise) {
             if (typeof(f) === 'function') {
@@ -104,9 +104,9 @@
          * undefined, return the second parameter. If the first parameter is of
          * an unknown type (not a boolean or undefined), throw an exception.
          * 
-         * @param {type} b          the value to check
-         * @param {type} otherwise  value to return if f is undefined
-         * @returns {boolean}      either 'b' (if a boolean) or 'otherwise'
+         * @param {boolean} b          the value to check
+         * @param {boolean} otherwise  value to return if f is undefined
+         * @returns {boolean}          either 'b' (if boolean) or 'otherwise'
          */
         var booleanOr = function(b, otherwise) {
             if (typeof(b) === 'boolean') {
@@ -132,11 +132,11 @@
          * If the 'remember' value is set, the credentials will be stored for
          * future use in the local storage.
          * 
+         * @constructor
+         * 
          * @argument {string} username  the username to login with 
          * @argument {string} password  the unhashed password to login with
          * @argument {boolean} remember true to store credentials, else false
-         * 
-         * @returns {securityL#23.LoginSpec}  the constructed instance
          */
         var LoginSpec = function(username, password, remember) {
             this.username  = expectString(username);
@@ -160,6 +160,7 @@
          * its first parameter and the status code of the login request as the
          * second. Both parameters are optional.
          * 
+         * @this {LoginSpec}
          * @argument {function(object, number)} handler  the new success handler
          * @returns {securityL#23.LoginSpec}             this instance
          */
@@ -175,6 +176,7 @@
          * its first parameter and the status code of the login request as the
          * second. Both parameters are optional.
          * 
+         * @this {LoginSpec}
          * @argument {function(object, number)} handler  the new failure handler
          * @returns {securityL#23.LoginSpec}             this instance
          */
@@ -348,6 +350,8 @@
             /**
              * Logout any logged in user, clearing both the session and the
              * local storage.
+             * 
+             * @returns {Security}  this instance
              */
             logout : function() {
                 console.log("Logged out.");
