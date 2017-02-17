@@ -26,6 +26,12 @@
     if (typeof(window.Security) === 'undefined') {
         
         ////////////////////////////////////////////////////////////////////////
+        //                            Dependencies                            //
+        ////////////////////////////////////////////////////////////////////////
+        
+        var bcrypt = require('bcryptjs');
+        
+        ////////////////////////////////////////////////////////////////////////
         //                           Internal methods                         //
         ////////////////////////////////////////////////////////////////////////
         
@@ -58,6 +64,21 @@
                 throw 'Specified value "' + n + '" is not a number.';
             }
         };
+        
+        /**
+         * Takes a parameter and if it is a valid function, returns it. 
+         * Otherwise, an exception is thrown.
+         * 
+         * @param {type} f      the value to check
+         * @returns {function}  the value inputted
+         */
+        var expectFunction = function(f) {
+            if (typeof(f) === 'function') {
+                return f;
+            } else {
+                throw 'Specified value "' + f + '" is not a function.';
+            }
+        };
 
         /**
          * If the first parameter is a valid function, return it. If it is
@@ -78,6 +99,90 @@
             }
         };
         
+        /**
+         * If the first parameter is a valid boolean, return it. If it is
+         * undefined, return the second parameter. If the first parameter is of
+         * an unknown type (not a boolean or undefined), throw an exception.
+         * 
+         * @param {type} b          the value to check
+         * @param {type} otherwise  value to return if f is undefined
+         * @returns {boolean}      either 'b' (if a boolean) or 'otherwise'
+         */
+        var booleanOr = function(b, otherwise) {
+            if (typeof(b) === 'boolean') {
+                return b;
+            } else if (typeof(b) === 'undefined') {
+                return otherwise;
+            } else {
+                throw 'Expected boolean, but got "' + typeof(b) + '".';
+            }
+        };
+        
+        
+        ////////////////////////////////////////////////////////////////////////
+        //                           Internal classes                         //
+        ////////////////////////////////////////////////////////////////////////
+        
+        /**
+         * Holds information about a login attempt. If the attempts succeeds,
+         * the 'onSuccess' handler will be invoked with the response from the
+         * server. If not, the 'onFailure' handler will be invoked with the
+         * reponse body.
+         * <p>
+         * If the 'remember' value is set, the credentials will be stored for
+         * future use in the local storage.
+         * 
+         * @argument {string} username  the username to login with 
+         * @argument {string} password  the unhashed password to login with
+         * @argument {boolean} remember true to store credentials, else false
+         * 
+         * @returns {securityL#23.LoginSpec}  the constructed instance
+         */
+        var LoginSpec = function(username, password, remember) {
+            this.username  = expectString(username);
+            this.password  = expectString(password);
+            this.remember  = booleanOr(remember, false);
+            
+            this.success = function(res) {
+                console.log('Login success! Response: ' + res);
+            };
+            
+            this.failure = function(res, status) {
+                console.error('Login failed with status ' + status + 
+                    '! Response: ' + res);
+            };
+        };
+        
+        /**
+         * Modified the success handler to be the specified handler function.
+         * <p>
+         * The given function should take the data returned from the server as
+         * its first parameter and the status code of the login request as the
+         * second. Both parameters are optional.
+         * 
+         * @argument {function(object, number)} handler  the new success handler
+         * @returns {securityL#23.LoginSpec}             this instance
+         */
+        LoginSpec.prototype.onSuccess = function(handler) {
+            this.success = expectFunction(handler);
+            return this;
+        };
+        
+        /**
+         * Modified the failure handler to be the specified handler function.
+         * <p>
+         * The given function should take the data returned from the server as
+         * its first parameter and the status code of the login request as the
+         * second. Both parameters are optional.
+         * 
+         * @argument {function(object, number)} handler  the new failure handler
+         * @returns {securityL#23.LoginSpec}             this instance
+         */
+        LoginSpec.prototype.onFailure = function(handler) {
+            this.failure = expectFunction(handler);
+            return this;
+        };
+        
         ////////////////////////////////////////////////////////////////////////
         //                              Constructor                           //
         ////////////////////////////////////////////////////////////////////////
@@ -90,8 +195,8 @@
             ////////////////////////////////////////////////////////////////////
             //                         Member Variables                       //
             ////////////////////////////////////////////////////////////////////
-            user : null,
-            pass : null,
+            username : null,
+            password : null,
 
             ////////////////////////////////////////////////////////////////////
             //                        Manage Credentials                      //
@@ -104,7 +209,7 @@
              * @returns {string}  the username
              */
             getUsername : function() {
-                return this.user;
+                return this.username;
             },
 
             /**
@@ -114,7 +219,7 @@
              * @returns {string}  the password
              */
             getPassword : function() {
-                return this.pass;
+                return this.password;
             },
             
             /**
@@ -123,8 +228,8 @@
              * @returns {boolean}  true if logged in, else false
              */
             isLoggedIn : function() {
-                return this.user !== null
-                    && this.pass !== null;
+                return this.username !== null
+                    && this.password !== null;
             },
             
             /**
@@ -152,23 +257,64 @@
              * Login using the specified credentials, storing them in either the
              * local session or local storage depending on the 'remember'
              * parameter. To logout again, use the .logout()-method.
+             * <p>
+             * The method will make an asynchronous request to the specified url
+             * with the Basic Authentication header set to the username and
+             * password specified in the 'config' object. The password will be
+             * hashed using a 10 pass bcrypt. If the request succeeds, then the
+             * credentials will be stored either in the session or the local
+             * storage before the success handler is called. If it fails, the
+             * failure handler will be called.
              * 
-             * @param {string} user       the username
-             * @param {string} pass       the password (unencrypted)
-             * @param {boolean} remember  true to store credentials, else false
+             * @param {string} url        the url of the remote login service
+             * @param {LoginSpec} config  the credentials and handlers
              * @returns {Security}        this instance
              */
-            login : function(user, pass, remember) {
-                this.user = user;
-                this.pass = pass;
+            login : function(url, config) {
+                
+                expectString(url);
+                expectString(config.username);
+                expectString(config.password);
+                expectFunction(config.success);
+                expectFunction(config.failure);
+                
+                bcrypt.hash(config.password, 10, function(err, hash) {
+                    if (err !== null) {
+                        throw err;
+                    } else {
+                        expectString(hash);
+                        
+                        var xhttp = new XMLHttpRequest();
+                        xhttp.open('GET', url, true);
+                        xhttp.onreadystatechange = function() {
+                            if (this.readyState === 4) {
+                                var res    = JSON.parse(xhttp.responseText);
+                                var status = expectNumber(xhttp.status);
+                                
+                                if (status === 200) {
+                                    this.user = config.username;
+                                    this.pass = hash;
 
-                if (remember) {
-                    localStorage.user = user;
-                    localStorage.pass = pass;
-                } else {
-                    sessionStorage.user = user;
-                    sessionStorage.pass = pass;
-                }
+                                    if (config.remember) {
+                                        localStorage.user = this.user;
+                                        localStorage.pass = this.pass;
+                                    } else {
+                                        sessionStorage.user = this.user;
+                                        sessionStorage.pass = this.pass;
+                                    }
+                                    
+                                    config.success(res, status);
+                                } else {
+                                    config.failure(res, status);
+                                }
+                            }
+                        };
+
+                        xhttp.withCredentials = true;
+                        xhttp.setRequestHeader('Authorization', 'Basic ' + 
+                            btoa(config.username + ':' + hash));
+                    }
+                });
                 
                 return this;
             },
@@ -180,8 +326,9 @@
              * @returns {Security}  this instance
              */
             loadStored : function() {
-                this.user = expectString(localStorage.user);
-                this.pass = expectString(localStorage.pass);
+                console.log("Logged in using stored credentials.");
+                this.username = expectString(localStorage.user);
+                this.password = expectString(localStorage.pass);
                 return this;
             },
             
@@ -192,8 +339,9 @@
              * @returns {Security}  this instance
              */
             loadSession : function() {
-                this.user = expectString(sessionStorage.user);
-                this.pass = expectString(sessionStorage.pass);
+                console.log("Logged in using session credentials.");
+                this.username = expectString(sessionStorage.user);
+                this.password = expectString(sessionStorage.pass);
                 return this;
             },
 
@@ -202,6 +350,7 @@
              * local storage.
              */
             logout : function() {
+                console.log("Logged out.");
                 localStorage.user   = null;
                 localStorage.pass   = null;
                 sessionStorage.user = null;
@@ -356,6 +505,7 @@
              * code of the request. The data will be decoded from its original
              * JSON format automatically.
              * 
+             * @param {string} method   the HTTP request method to use
              * @param {string} url      the url to send the request to
              * @param {object|function} config  a configuration object
              * @returns {Security}      this instance
@@ -406,11 +556,11 @@
                 };
                 
                 xhttp.withCredentials = true;
-                console.log('user: ' + this.user);
-                console.log('pass: ' + this.pass);
+                console.log('user: ' + this.username);
+                console.log('pass: ' + this.password);
                 
                 xhttp.setRequestHeader('Authorization', 'Basic ' + 
-                    btoa(this.user + ':' + this.pass));
+                    btoa(this.username + ':' + this.password));
             
                 if (data === '') {
                     xhttp.send();
