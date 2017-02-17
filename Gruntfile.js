@@ -5,7 +5,7 @@ module.exports = function (grunt) {
             security: {
                 closurePath  : '/home/pyknic/closure_compiler',
                 js           : 'src/security.js',
-                jsOutputFile : 'bin/security.min.js',
+                jsOutputFile : 'dist/security.min.js',
                 maxBuffer    : 500,
                 options      : {
                     compilation_level : 'ADVANCED_OPTIMIZATIONS',
