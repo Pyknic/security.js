@@ -15,3 +15,7 @@ hs_err_pid*
 
 # IDE Settings
 nbproject/**
+
+# External Sources
+bower_components/**
+node_modules/**
